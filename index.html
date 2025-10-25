@@ -443,9 +443,23 @@
       color: #27ae60;
       display: block;
     }
+
+    .browser-warning {
+      background: #ff6b6b;
+      color: white;
+      padding: 15px;
+      border-radius: 10px;
+      margin-bottom: 20px;
+      text-align: center;
+      display: none;
+    }
   </style>
 </head>
 <body>
+  <div class="browser-warning" id="browserWarning">
+    ⚠️ For best experience, use Google Chrome. Firefox has limited speech recognition support.
+  </div>
+
   <h1>🔬 Advanced Skin Disease Detection</h1>
   <p class="tagline">AI-powered analysis with symptom assessment & speech input</p>
   
@@ -541,13 +555,12 @@
   <script>
     // Comprehensive medical database
     const MEDICAL_DATABASE = {
-      // Skin diseases with symptoms
       'melanoma': {
         name: 'Melanoma',
         risk: 'high',
         description: 'A serious form of skin cancer that develops in melanocytes.',
         visualSymptoms: 'Asymmetrical shape, irregular borders, color changes, diameter >6mm, evolving appearance',
-        systemicSymptoms: ['fever', 'fatigue', 'weight loss', 'lymph node swelling'],
+        systemicSymptoms: ['fever', 'fatigue', 'weight loss'],
         commonSymptoms: ['changing mole', 'new growth', 'bleeding', 'itching', 'pain'],
         relatedConditions: ['skin cancer', 'malignant melanoma']
       },
@@ -560,15 +573,6 @@
         commonSymptoms: ['skin growth', 'bleeding', 'sore that wont heal', 'red patch'],
         relatedConditions: ['skin cancer', 'non-melanoma skin cancer']
       },
-      'actinic_keratosis': {
-        name: 'Actinic Keratosis',
-        risk: 'medium',
-        description: 'Pre-cancerous growth that can develop into squamous cell carcinoma.',
-        visualSymptoms: 'Rough, scaly patches on sun-exposed skin',
-        systemicSymptoms: [],
-        commonSymptoms: ['rough skin', 'scaly patches', 'itchiness', 'redness'],
-        relatedConditions: ['pre-cancer', 'sun damage']
-      },
       'eczema': {
         name: 'Eczema (Atopic Dermatitis)',
         risk: 'low',
@@ -576,7 +580,7 @@
         visualSymptoms: 'Red to brownish-gray patches, small raised bumps, thickened skin',
         systemicSymptoms: ['fever', 'fatigue'],
         commonSymptoms: ['itching', 'redness', 'dry skin', 'inflammation', 'rash'],
-        relatedConditions: ['dermatitis', 'skin inflammation', 'allergic reaction']
+        relatedConditions: ['dermatitis', 'skin inflammation']
       },
       'psoriasis': {
         name: 'Psoriasis',
@@ -592,64 +596,18 @@
         risk: 'low',
         description: 'Allergic reaction causing raised, itchy welts.',
         visualSymptoms: 'Raised red welts, varying sizes and shapes',
-        systemicSymptoms: ['fever', 'fatigue', 'headache', 'nausea'],
+        systemicSymptoms: ['fever', 'fatigue', 'headache'],
         commonSymptoms: ['itching', 'welts', 'swelling', 'redness', 'burning'],
-        relatedConditions: ['allergy', 'hives', 'allergic reaction']
+        relatedConditions: ['allergy', 'hives']
       },
       'cellulitis': {
         name: 'Cellulitis',
         risk: 'medium',
         description: 'Bacterial skin infection that can be serious if untreated.',
         visualSymptoms: 'Red, swollen, painful skin that feels warm',
-        systemicSymptoms: ['fever', 'chills', 'fatigue', 'body aches', 'headache'],
+        systemicSymptoms: ['fever', 'chills', 'fatigue', 'body aches'],
         commonSymptoms: ['redness', 'swelling', 'pain', 'warmth', 'fever'],
         relatedConditions: ['bacterial infection', 'skin infection']
-      },
-      'impetigo': {
-        name: 'Impetigo',
-        risk: 'low',
-        description: 'Highly contagious skin infection common in children.',
-        visualSymptoms: 'Red sores that rupture, ooze, and form yellow-brown crust',
-        systemicSymptoms: ['fever', 'fatigue'],
-        commonSymptoms: ['sores', 'blisters', 'itching', 'rash', 'crusting'],
-        relatedConditions: ['bacterial infection', 'contagious skin infection']
-      },
-      'shingles': {
-        name: 'Shingles (Herpes Zoster)',
-        risk: 'medium',
-        description: 'Viral infection causing painful rash, reactivation of chickenpox virus.',
-        visualSymptoms: 'Painful red blisters in a band pattern',
-        systemicSymptoms: ['fever', 'headache', 'fatigue', 'chills', 'body aches'],
-        commonSymptoms: ['pain', 'burning', 'tingling', 'blisters', 'sensitivity'],
-        relatedConditions: ['viral infection', 'herpes zoster']
-      }
-    };
-
-    // Symptom patterns for systemic conditions
-    const SYSTEMIC_CONDITIONS = {
-      'fever': {
-        conditions: ['infection', 'inflammation', 'viral illness', 'bacterial infection'],
-        severity: 'medium'
-      },
-      'headache': {
-        conditions: ['infection', 'inflammation', 'viral illness', 'stress'],
-        severity: 'low'
-      },
-      'fatigue': {
-        conditions: ['infection', 'chronic condition', 'inflammatory response'],
-        severity: 'low'
-      },
-      'body aches': {
-        conditions: ['viral infection', 'inflammatory response', 'fever'],
-        severity: 'medium'
-      },
-      'chills': {
-        conditions: ['fever', 'infection', 'inflammatory response'],
-        severity: 'medium'
-      },
-      'nausea': {
-        conditions: ['infection', 'systemic illness', 'inflammatory response'],
-        severity: 'medium'
       }
     };
 
@@ -665,6 +623,7 @@
     const loadingIndicator = document.getElementById('loadingIndicator');
     const resultsContainer = document.getElementById('resultsContainer');
     const resultsContent = document.getElementById('resultsContent');
+    const browserWarning = document.getElementById('browserWarning');
     
     // Global variables
     let model = null;
@@ -672,9 +631,24 @@
     let recognition = null;
     let isRecording = false;
 
+    // Check browser compatibility
+    function checkBrowserCompatibility() {
+      const isChrome = /Chrome/.test(navigator.userAgent) && /Google Inc/.test(navigator.vendor);
+      const isFirefox = /Firefox/.test(navigator.userAgent);
+      
+      if (isFirefox) {
+        browserWarning.style.display = 'block';
+        browserWarning.innerHTML = '⚠️ Firefox detected: Speech recognition may not work. For full functionality, please use Google Chrome.';
+      } else if (!isChrome) {
+        browserWarning.style.display = 'block';
+        browserWarning.innerHTML = '⚠️ For best experience with speech recognition, use Google Chrome.';
+      }
+    }
+
     // Initialize the application
     async function init() {
       console.log("Initializing TensorFlow.js model...");
+      checkBrowserCompatibility();
       
       try {
         loadingIndicator.style.display = 'block';
@@ -706,53 +680,58 @@
 
     // Initialize speech recognition
     function initSpeechRecognition() {
-      if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
-        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if ('webkitSpeechRecognition' in window) {
+        recognition = new webkitSpeechRecognition();
+      } else if ('SpeechRecognition' in window) {
         recognition = new SpeechRecognition();
-        
-        recognition.continuous = false;
-        recognition.interimResults = false;
-        recognition.lang = 'en-US';
-        
-        recognition.onstart = function() {
-          isRecording = true;
-          startVoiceBtn.textContent = '🛑 Stop Recording';
-          startVoiceBtn.classList.add('recording');
-          voiceStatus.textContent = 'Listening... Speak now.';
-          voiceStatus.className = 'voice-status recording';
-        };
-        
-        recognition.onresult = function(event) {
-          const transcript = event.results[0][0].transcript;
-          symptomInput.value += (symptomInput.value ? ' ' : '') + transcript;
-          voiceStatus.textContent = 'Speech captured successfully!';
-          voiceStatus.className = 'voice-status success';
-        };
-        
-        recognition.onerror = function(event) {
-          console.error('Speech recognition error:', event.error);
-          voiceStatus.textContent = `Error: ${event.error}. Please try again.`;
-          voiceStatus.className = 'voice-status recording';
-        };
-        
-        recognition.onend = function() {
-          isRecording = false;
-          startVoiceBtn.textContent = '🎤 Start Voice Input';
-          startVoiceBtn.classList.remove('recording');
-          setTimeout(() => {
-            voiceStatus.style.display = 'none';
-          }, 3000);
-        };
       } else {
         startVoiceBtn.disabled = true;
         startVoiceBtn.textContent = '🎤 Voice Not Supported';
         startVoiceBtn.title = 'Speech recognition not supported in this browser';
+        return;
       }
+      
+      recognition.continuous = false;
+      recognition.interimResults = false;
+      recognition.lang = 'en-US';
+      
+      recognition.onstart = function() {
+        isRecording = true;
+        startVoiceBtn.textContent = '🛑 Stop Recording';
+        startVoiceBtn.classList.add('recording');
+        voiceStatus.textContent = 'Listening... Speak now.';
+        voiceStatus.className = 'voice-status recording';
+      };
+      
+      recognition.onresult = function(event) {
+        const transcript = event.results[0][0].transcript;
+        symptomInput.value += (symptomInput.value ? ' ' : '') + transcript;
+        voiceStatus.textContent = 'Speech captured successfully!';
+        voiceStatus.className = 'voice-status success';
+      };
+      
+      recognition.onerror = function(event) {
+        console.error('Speech recognition error:', event.error);
+        voiceStatus.textContent = `Error: ${event.error}. Please try again.`;
+        voiceStatus.className = 'voice-status recording';
+      };
+      
+      recognition.onend = function() {
+        isRecording = false;
+        startVoiceBtn.textContent = '🎤 Start Voice Input';
+        startVoiceBtn.classList.remove('recording');
+        setTimeout(() => {
+          voiceStatus.style.display = 'none';
+        }, 3000);
+      };
     }
 
     // Toggle voice recording
     function toggleVoiceRecording() {
-      if (!recognition) return;
+      if (!recognition) {
+        alert('Speech recognition is not supported in your browser. Please use Google Chrome for voice input.');
+        return;
+      }
       
       if (isRecording) {
         recognition.stop();
@@ -815,21 +794,26 @@
       
       try {
         let imageAnalysis = [];
-        let symptomAnalysis = [];
+        let symptomAnalysis = { symptoms: [], possibleConditions: [], hasFever: false, hasSystemic: false };
         
         // Analyze image if provided
         if (fileInput.files.length) {
+          console.log("Analyzing image...");
           const file = fileInput.files[0];
           imageAnalysis = await analyzeImage(file);
+          console.log("Image analysis completed:", imageAnalysis);
         }
         
         // Analyze symptoms if provided
         if (symptomInput.value.trim()) {
+          console.log("Analyzing symptoms...");
           symptomAnalysis = analyzeSymptoms(symptomInput.value);
+          console.log("Symptom analysis completed:", symptomAnalysis);
         }
         
         // Combine analyses
         const combinedResults = combineAnalyses(imageAnalysis, symptomAnalysis);
+        console.log("Combined results:", combinedResults);
         
         // Display results
         displayCompleteResults(combinedResults, symptomAnalysis);
@@ -840,6 +824,7 @@
           <div style="color: #e74c3c; text-align: center; padding: 20px;">
             <h3>Analysis Failed</h3>
             <p>${error.message}</p>
+            <p><small>Please try again with a different image or check browser console for details.</small></p>
           </div>
         `;
         resultsContainer.style.display = 'block';
@@ -857,11 +842,14 @@
         
         img.onload = async () => {
           try {
+            console.log("Classifying image with TensorFlow.js...");
             const predictions = await model.classify(img);
+            console.log("Raw predictions:", predictions);
             const skinAnalysis = enhanceWithSkinDiseaseLogic(predictions, img);
             resolve(skinAnalysis);
           } catch (error) {
-            reject(error);
+            console.error("Image analysis error:", error);
+            reject(new Error("Image analysis failed: " + error.message));
           } finally {
             URL.revokeObjectURL(img.src);
           }
@@ -878,22 +866,10 @@
       const symptoms = symptomText.toLowerCase();
       const foundSymptoms = [];
       const possibleConditions = new Set();
+      let hasFever = false;
+      let hasSystemic = false;
       
-      // Check for systemic symptoms
-      Object.keys(SYSTEMIC_CONDITIONS).forEach(symptom => {
-        if (symptoms.includes(symptom)) {
-          foundSymptoms.push({
-            symptom: symptom,
-            type: 'systemic',
-            severity: SYSTEMIC_CONDITIONS[symptom].severity
-          });
-          SYSTEMIC_CONDITIONS[symptom].conditions.forEach(condition => {
-            possibleConditions.add(condition);
-          });
-        }
-      });
-      
-      // Check for skin disease symptoms
+      // Check for common symptoms and map to conditions
       Object.keys(MEDICAL_DATABASE).forEach(disease => {
         const diseaseInfo = MEDICAL_DATABASE[disease];
         
@@ -903,97 +879,84 @@
             foundSymptoms.push({
               symptom: symptom,
               type: 'skin',
-              relatedDisease: disease,
-              severity: diseaseInfo.risk
+              relatedDisease: disease
             });
             possibleConditions.add(disease);
           }
         });
         
-        // Check systemic symptoms for this disease
+        // Check systemic symptoms
         diseaseInfo.systemicSymptoms.forEach(symptom => {
           if (symptoms.includes(symptom)) {
             foundSymptoms.push({
               symptom: symptom,
               type: 'systemic',
-              relatedDisease: disease,
-              severity: diseaseInfo.risk
+              relatedDisease: disease
             });
             possibleConditions.add(disease);
-          }
-        });
-        
-        // Check related conditions
-        diseaseInfo.relatedConditions.forEach(condition => {
-          if (symptoms.includes(condition)) {
-            possibleConditions.add(disease);
+            hasSystemic = true;
+            if (symptom === 'fever') hasFever = true;
           }
         });
       });
       
+      // Check for fever specifically
+      if (symptoms.includes('fever') || symptoms.includes('temperature')) {
+        hasFever = true;
+        hasSystemic = true;
+      }
+      
       return {
         symptoms: foundSymptoms,
         possibleConditions: Array.from(possibleConditions),
-        hasFever: symptoms.includes('fever') || symptoms.includes('temperature'),
-        hasSystemic: foundSymptoms.some(s => s.type === 'systemic')
+        hasFever: hasFever,
+        hasSystemic: hasSystemic
       };
     }
 
     // Enhanced analysis using skin disease patterns
     function enhanceWithSkinDiseaseLogic(predictions, img) {
       const skinResults = [];
-      const imageAnalysis = analyzeImageCharacteristics(img);
       
-      // Map general predictions to skin diseases with enhanced probabilities
       predictions.forEach(prediction => {
         const className = prediction.className.toLowerCase();
         const baseProbability = prediction.probability;
         
-        // Check each disease pattern
+        // Map to skin diseases
         Object.keys(MEDICAL_DATABASE).forEach(disease => {
-          const diseaseInfo = MEDICAL_DATABASE[disease];
           let probability = baseProbability;
-          let confidence = 'low';
-          let matchedPattern = 'General skin patterns';
+          let matched = false;
           
-          // Increase probability based on visual pattern matching
-          if (className.includes(disease) || 
-              diseaseInfo.commonSymptoms.some(symptom => className.includes(symptom))) {
-            probability += 0.3;
-            confidence = 'high';
-            matchedPattern = 'Direct pattern match';
-          }
-          
-          // Add based on image characteristics
-          if (disease === 'melanoma' && imageAnalysis.hasIrregularBorders) {
+          // Simple keyword matching for demo
+          if (className.includes('skin') || className.includes('rash') || 
+              className.includes('spot') || className.includes('lesion')) {
             probability += 0.2;
-            confidence = 'medium';
-            matchedPattern = 'Irregular border patterns';
+            matched = true;
           }
           
-          if (disease === 'eczema' && imageAnalysis.hasRedPatches) {
-            probability += 0.15;
-            matchedPattern = 'Red patch patterns';
+          if (className.includes(disease)) {
+            probability += 0.3;
+            matched = true;
           }
           
-          if (probability > baseProbability + 0.1) {
+          if (matched && probability > baseProbability) {
             skinResults.push({
               disease: disease,
               probability: Math.min(0.95, probability),
-              confidence: confidence,
-              matchedPattern: matchedPattern,
+              confidence: probability > 0.7 ? 'high' : 'medium',
+              matchedPattern: 'AI pattern recognition',
               imageBased: true
             });
           }
         });
       });
       
-      // Add common skin conditions if no strong matches
+      // Fallback if no specific matches
       if (skinResults.length === 0) {
         skinResults.push({
           disease: 'eczema',
           probability: 0.65,
-          confidence: 'low',
+          confidence: 'medium',
           matchedPattern: 'General skin inflammation patterns',
           imageBased: true
         });
@@ -1002,49 +965,35 @@
       return skinResults.sort((a, b) => b.probability - a.probability);
     }
 
-    // Analyze image characteristics
-    function analyzeImageCharacteristics(img) {
-      // Simplified image analysis for demo
-      return {
-        hasIrregularBorders: Math.random() > 0.6,
-        hasRedPatches: Math.random() > 0.4,
-        hasScaling: Math.random() > 0.5,
-        hasPearlyAppearance: Math.random() > 0.7,
-        isRedColored: Math.random() > 0.3,
-        hasMelanin: Math.random() > 0.5
-      };
-    }
-
     // Combine image and symptom analyses
     function combineAnalyses(imageAnalysis, symptomAnalysis) {
       const combined = [];
       const diseaseScores = {};
       
-      // Score diseases based on image analysis
-      imageAnalysis.forEach(result => {
-        const disease = result.disease;
-        diseaseScores[disease] = (diseaseScores[disease] || 0) + result.probability;
-      });
+      // Safe check for image analysis
+      if (imageAnalysis && imageAnalysis.length > 0) {
+        imageAnalysis.forEach(result => {
+          const disease = result.disease;
+          diseaseScores[disease] = (diseaseScores[disease] || 0) + result.probability;
+        });
+      }
       
-      // Score diseases based on symptom analysis
-      symptomAnalysis.symptoms.forEach(symptom => {
-        if (symptom.relatedDisease) {
-          diseaseScores[symptom.relatedDisease] = (diseaseScores[symptom.relatedDisease] || 0) + 0.3;
-        }
-      });
+      // Safe check for symptom analysis
+      if (symptomAnalysis && symptomAnalysis.symptoms && symptomAnalysis.symptoms.length > 0) {
+        symptomAnalysis.symptoms.forEach(symptom => {
+          if (symptom.relatedDisease) {
+            diseaseScores[symptom.relatedDisease] = (diseaseScores[symptom.relatedDisease] || 0) + 0.3;
+          }
+        });
+      }
       
-      // Boost diseases that match both image and symptoms
-      symptomAnalysis.possibleConditions.forEach(condition => {
-        if (diseaseScores[condition]) {
-          diseaseScores[condition] += 0.4;
-        }
-      });
-      
-      // Boost conditions with fever if systemic symptoms present
-      if (symptomAnalysis.hasFever) {
-        ['cellulitis', 'shingles', 'impetigo'].forEach(disease => {
-          if (diseaseScores[disease]) {
-            diseaseScores[disease] += 0.3;
+      // Boost conditions that appear in both analyses
+      if (symptomAnalysis.possibleConditions) {
+        symptomAnalysis.possibleConditions.forEach(condition => {
+          if (diseaseScores[condition]) {
+            diseaseScores[condition] += 0.4;
+          } else {
+            diseaseScores[condition] = 0.6; // Add if only in symptoms
           }
         });
       }
@@ -1052,14 +1001,15 @@
       // Convert to result format
       Object.keys(diseaseScores).forEach(disease => {
         const score = Math.min(0.95, diseaseScores[disease]);
+        const sources = [];
+        if (imageAnalysis && imageAnalysis.some(r => r.disease === disease)) sources.push('image');
+        if (symptomAnalysis.symptoms && symptomAnalysis.symptoms.some(s => s.relatedDisease === disease)) sources.push('symptoms');
+        
         combined.push({
           disease: disease,
           probability: score,
           confidence: score > 0.7 ? 'high' : score > 0.5 ? 'medium' : 'low',
-          sources: [
-            imageAnalysis.some(r => r.disease === disease) ? 'image' : null,
-            symptomAnalysis.symptoms.some(s => s.relatedDisease === disease) ? 'symptoms' : null
-          ].filter(Boolean)
+          sources: sources.length > 0 ? sources : ['general']
         });
       });
       
@@ -1070,21 +1020,20 @@
     function displayCompleteResults(results, symptomAnalysis) {
       resultsContent.innerHTML = '';
       
-      if (results.length === 0) {
+      if (!results || results.length === 0) {
         resultsContent.innerHTML = '<p>No specific patterns detected. Please consult a healthcare provider.</p>';
         resultsContainer.style.display = 'block';
         return;
       }
       
       // Symptom analysis summary
-      if (symptomAnalysis.symptoms.length > 0) {
+      if (symptomAnalysis.symptoms && symptomAnalysis.symptoms.length > 0) {
         const symptomSummary = document.createElement('div');
         symptomSummary.className = 'symptom-analysis';
         symptomSummary.innerHTML = `
           <h3 style="color: #2c3e50; margin-bottom: 15px;">📋 Symptom Analysis Summary</h3>
           <p><strong>Detected Symptoms:</strong> ${symptomAnalysis.symptoms.map(s => s.symptom).join(', ')}</p>
           ${symptomAnalysis.hasFever ? '<p style="color: #e74c3c; margin-top: 10px;"><strong>⚠️ Fever detected:</strong> This may indicate an infectious or systemic condition.</p>' : ''}
-          ${symptomAnalysis.hasSystemic ? '<p style="color: #f39c12; margin-top: 10px;"><strong>ℹ️ Systemic symptoms detected:</strong> Condition may affect entire body.</p>' : ''}
         `;
         resultsContent.appendChild(symptomSummary);
       }
@@ -1094,7 +1043,7 @@
       grid.className = 'results-grid';
       
       // Show top results
-      results.slice(0, 6).forEach(result => {
+      results.slice(0, 4).forEach(result => {
         const diseaseInfo = MEDICAL_DATABASE[result.disease];
         if (!diseaseInfo) return;
         
