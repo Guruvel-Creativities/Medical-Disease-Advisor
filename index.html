@@ -75,10 +75,14 @@
       resultBox.innerHTML = "🔍 Analyzing... Please wait...";
 
       try {
-        const response = await fetch("https://api.ailabapi.com/api/portrait/analysis/skin-disease-detection", {
+        // ✅ Use a CORS proxy here
+        const proxyUrl = "https://cors-anywhere.herokuapp.com/";
+        const apiUrl = "https://api.ailabapi.com/api/portrait/analysis/skin-disease-detection";
+
+        const response = await fetch(proxyUrl + apiUrl, {
           method: "POST",
           headers: {
-            "ailabapi-api-key": "YOUR_API_KEY_HERE"  // ⬅️ Replace this
+            "ailabapi-api-key": "iBQYZS9o3vmAC79Grs0IOitLKIuOozXPl5ynHQEqeKJjxyABq3kNe27p4FRnCvhM" // ⬅️ Replace with your API key
           },
           body: formData
         });
