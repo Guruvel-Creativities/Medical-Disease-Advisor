@@ -224,7 +224,7 @@
       color: #7f8c8d;
     }
     
-    button {
+    .analyze-btn {
       background: linear-gradient(135deg, #2ecc71, #27ae60);
       color: white;
       border: none;
@@ -240,12 +240,12 @@
       box-shadow: 0 4px 15px rgba(46, 204, 113, 0.3);
     }
     
-    button:hover {
+    .analyze-btn:hover {
       transform: translateY(-2px);
       box-shadow: 0 6px 20px rgba(46, 204, 113, 0.4);
     }
     
-    button:disabled {
+    .analyze-btn:disabled {
       background: #bdc3c7;
       cursor: not-allowed;
       transform: none;
@@ -453,6 +453,28 @@
       text-align: center;
       display: none;
     }
+
+    .test-symptoms {
+      margin-top: 15px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .symptom-chip {
+      background: #e3f2fd;
+      border: 1px solid #3498db;
+      border-radius: 20px;
+      padding: 6px 12px;
+      font-size: 0.8rem;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+
+    .symptom-chip:hover {
+      background: #3498db;
+      color: white;
+    }
   </style>
 </head>
 <body>
@@ -499,22 +521,33 @@
             <label for="symptomInput"><strong>Describe Your Symptoms:</strong></label>
             <textarea 
               id="symptomInput" 
-              placeholder="Describe your symptoms in detail. For example: 'I have red itchy rash with fever and headache for 3 days. Also experiencing body aches and fatigue.'"
+              placeholder="Example: 'I have headache with cold and fever. Also experiencing body aches.'"
             ></textarea>
+            
+            <div class="test-symptoms">
+              <div class="symptom-chip" onclick="addSymptom('fever')">Fever</div>
+              <div class="symptom-chip" onclick="addSymptom('headache')">Headache</div>
+              <div class="symptom-chip" onclick="addSymptom('cold')">Cold</div>
+              <div class="symptom-chip" onclick="addSymptom('cough')">Cough</div>
+              <div class="symptom-chip" onclick="addSymptom('body aches')">Body Aches</div>
+              <div class="symptom-chip" onclick="addSymptom('fatigue')">Fatigue</div>
+              <div class="symptom-chip" onclick="addSymptom('rash')">Rash</div>
+              <div class="symptom-chip" onclick="addSymptom('itching')">Itching</div>
+            </div>
             
             <div class="voice-controls">
               <button class="voice-btn start-voice" id="startVoiceBtn">
                 🎤 Start Voice Input
               </button>
               <button class="voice-btn clear-btn" onclick="clearSymptoms()">
-                🗑️ Clear
+                🗑️ Clear Text
               </button>
             </div>
             
             <div class="voice-status" id="voiceStatus"></div>
             
             <div class="symptom-examples">
-              <strong>Example symptoms:</strong> fever, headache, itching, pain, swelling, redness, fatigue, body aches, chills, nausea
+              <strong>Quick tips:</strong> Click symptoms above or type your own. Include details like duration and severity.
             </div>
           </div>
         </div>
@@ -522,7 +555,7 @@
     </div>
     
     <div style="text-align: center;">
-      <button id="analyzeButton" onclick="analyzeComplete()">Start Complete Analysis</button>
+      <button class="analyze-btn" id="analyzeButton">Start Complete Analysis</button>
     </div>
     
     <div class="loading" id="loadingIndicator">
@@ -553,31 +586,49 @@
   <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/mobilenet@2.0.4"></script>
 
   <script>
-    // Comprehensive medical database
+    // Enhanced medical database with systemic conditions
     const MEDICAL_DATABASE = {
+      'common_cold': {
+        name: 'Common Cold',
+        risk: 'low',
+        description: 'Viral infection of the upper respiratory tract.',
+        visualSymptoms: 'Runny nose, watery eyes',
+        systemicSymptoms: ['fever', 'headache', 'fatigue', 'body aches'],
+        commonSymptoms: ['cold', 'cough', 'sneezing', 'sore throat', 'runny nose'],
+        relatedConditions: ['viral infection', 'respiratory infection']
+      },
+      'influenza': {
+        name: 'Influenza (Flu)',
+        risk: 'medium',
+        description: 'Viral infection that attacks the respiratory system.',
+        visualSymptoms: 'Flushed face, watery eyes',
+        systemicSymptoms: ['fever', 'headache', 'fatigue', 'body aches', 'chills'],
+        commonSymptoms: ['fever', 'cough', 'sore throat', 'runny nose', 'muscle pain'],
+        relatedConditions: ['viral infection', 'respiratory infection']
+      },
+      'sinusitis': {
+        name: 'Sinusitis',
+        risk: 'low',
+        description: 'Inflammation of the sinuses often caused by infection.',
+        visualSymptoms: 'Facial swelling, nasal congestion',
+        systemicSymptoms: ['headache', 'fever', 'fatigue'],
+        commonSymptoms: ['headache', 'facial pain', 'nasal congestion', 'cough'],
+        relatedConditions: ['sinus infection', 'respiratory infection']
+      },
       'melanoma': {
         name: 'Melanoma',
         risk: 'high',
         description: 'A serious form of skin cancer that develops in melanocytes.',
-        visualSymptoms: 'Asymmetrical shape, irregular borders, color changes, diameter >6mm, evolving appearance',
+        visualSymptoms: 'Asymmetrical shape, irregular borders, color changes',
         systemicSymptoms: ['fever', 'fatigue', 'weight loss'],
-        commonSymptoms: ['changing mole', 'new growth', 'bleeding', 'itching', 'pain'],
+        commonSymptoms: ['changing mole', 'new growth', 'bleeding', 'itching'],
         relatedConditions: ['skin cancer', 'malignant melanoma']
-      },
-      'basal_cell_carcinoma': {
-        name: 'Basal Cell Carcinoma',
-        risk: 'medium',
-        description: 'Most common form of skin cancer, rarely spreads but can be locally destructive.',
-        visualSymptoms: 'Pearly bump, pink growth, bleeding sore, scar-like area',
-        systemicSymptoms: [],
-        commonSymptoms: ['skin growth', 'bleeding', 'sore that wont heal', 'red patch'],
-        relatedConditions: ['skin cancer', 'non-melanoma skin cancer']
       },
       'eczema': {
         name: 'Eczema (Atopic Dermatitis)',
         risk: 'low',
         description: 'Chronic condition that makes skin red and itchy.',
-        visualSymptoms: 'Red to brownish-gray patches, small raised bumps, thickened skin',
+        visualSymptoms: 'Red to brownish-gray patches, small raised bumps',
         systemicSymptoms: ['fever', 'fatigue'],
         commonSymptoms: ['itching', 'redness', 'dry skin', 'inflammation', 'rash'],
         relatedConditions: ['dermatitis', 'skin inflammation']
@@ -588,7 +639,7 @@
         description: 'Skin disease that causes red, itchy scaly patches.',
         visualSymptoms: 'Red patches with silvery scales, dry cracked skin',
         systemicSymptoms: ['fever', 'fatigue', 'joint pain'],
-        commonSymptoms: ['itching', 'scaling', 'red patches', 'pain', 'burning sensation'],
+        commonSymptoms: ['itching', 'scaling', 'red patches', 'pain'],
         relatedConditions: ['autoimmune', 'skin inflammation']
       },
       'urticaria': {
@@ -597,17 +648,8 @@
         description: 'Allergic reaction causing raised, itchy welts.',
         visualSymptoms: 'Raised red welts, varying sizes and shapes',
         systemicSymptoms: ['fever', 'fatigue', 'headache'],
-        commonSymptoms: ['itching', 'welts', 'swelling', 'redness', 'burning'],
+        commonSymptoms: ['itching', 'welts', 'swelling', 'redness'],
         relatedConditions: ['allergy', 'hives']
-      },
-      'cellulitis': {
-        name: 'Cellulitis',
-        risk: 'medium',
-        description: 'Bacterial skin infection that can be serious if untreated.',
-        visualSymptoms: 'Red, swollen, painful skin that feels warm',
-        systemicSymptoms: ['fever', 'chills', 'fatigue', 'body aches'],
-        commonSymptoms: ['redness', 'swelling', 'pain', 'warmth', 'fever'],
-        relatedConditions: ['bacterial infection', 'skin infection']
       }
     };
 
@@ -631,23 +673,9 @@
     let recognition = null;
     let isRecording = false;
 
-    // Check browser compatibility
-    function checkBrowserCompatibility() {
-      const isChrome = /Chrome/.test(navigator.userAgent) && /Google Inc/.test(navigator.vendor);
-      const isFirefox = /Firefox/.test(navigator.userAgent);
-      
-      if (isFirefox) {
-        browserWarning.style.display = 'block';
-        browserWarning.innerHTML = '⚠️ Firefox detected: Speech recognition may not work. For full functionality, please use Google Chrome.';
-      } else if (!isChrome) {
-        browserWarning.style.display = 'block';
-        browserWarning.innerHTML = '⚠️ For best experience with speech recognition, use Google Chrome.';
-      }
-    }
-
     // Initialize the application
     async function init() {
-      console.log("Initializing TensorFlow.js model...");
+      console.log("Initializing application...");
       checkBrowserCompatibility();
       
       try {
@@ -667,6 +695,9 @@
         // Initialize speech recognition
         initSpeechRecognition();
         
+        // Add event listeners
+        analyzeButton.addEventListener('click', analyzeComplete);
+        
       } catch (error) {
         console.error("Error loading model:", error);
         loadingIndicator.innerHTML = `
@@ -675,6 +706,20 @@
             <p><small>${error.message}</small></p>
           </div>
         `;
+      }
+    }
+
+    // Check browser compatibility
+    function checkBrowserCompatibility() {
+      const isChrome = /Chrome/.test(navigator.userAgent) && /Google Inc/.test(navigator.vendor);
+      const isFirefox = /Firefox/.test(navigator.userAgent);
+      
+      if (isFirefox) {
+        browserWarning.style.display = 'block';
+        browserWarning.innerHTML = '⚠️ Firefox detected: Speech recognition may not work. For full functionality, please use Google Chrome.';
+      } else if (!isChrome) {
+        browserWarning.style.display = 'block';
+        browserWarning.innerHTML = '⚠️ For best experience with speech recognition, use Google Chrome.';
       }
     }
 
@@ -705,7 +750,7 @@
       
       recognition.onresult = function(event) {
         const transcript = event.results[0][0].transcript;
-        symptomInput.value += (symptomInput.value ? ' ' : '') + transcript;
+        symptomInput.value = transcript;
         voiceStatus.textContent = 'Speech captured successfully!';
         voiceStatus.className = 'voice-status success';
       };
@@ -724,6 +769,18 @@
           voiceStatus.style.display = 'none';
         }, 3000);
       };
+    }
+
+    // Add symptom chips
+    function addSymptom(symptom) {
+      const currentText = symptomInput.value;
+      if (currentText.includes(symptom)) return;
+      
+      if (currentText.trim() === '') {
+        symptomInput.value = symptom;
+      } else {
+        symptomInput.value = currentText + ', ' + symptom;
+      }
     }
 
     // Toggle voice recording
@@ -776,6 +833,8 @@
 
     // Main analysis function
     async function analyzeComplete() {
+      console.log("Starting analysis...");
+      
       // Validate inputs
       if (!fileInput.files.length && !symptomInput.value.trim()) {
         alert("Please upload an image and/or describe your symptoms!");
@@ -802,6 +861,8 @@
           const file = fileInput.files[0];
           imageAnalysis = await analyzeImage(file);
           console.log("Image analysis completed:", imageAnalysis);
+        } else {
+          console.log("No image provided, skipping image analysis");
         }
         
         // Analyze symptoms if provided
@@ -809,6 +870,8 @@
           console.log("Analyzing symptoms...");
           symptomAnalysis = analyzeSymptoms(symptomInput.value);
           console.log("Symptom analysis completed:", symptomAnalysis);
+        } else {
+          console.log("No symptoms provided, skipping symptom analysis");
         }
         
         // Combine analyses
@@ -845,7 +908,68 @@
             console.log("Classifying image with TensorFlow.js...");
             const predictions = await model.classify(img);
             console.log("Raw predictions:", predictions);
-            const skinAnalysis = enhanceWithSkinDiseaseLogic(predictions, img);
+            
+            // Enhanced analysis for better skin disease detection
+            const skinAnalysis = [];
+            
+            predictions.forEach(prediction => {
+              const className = prediction.className.toLowerCase();
+              console.log("Analyzing class:", className);
+              
+              // Map to skin diseases based on keywords
+              if (className.includes('skin') || className.includes('rash') || 
+                  className.includes('spot') || className.includes('lesion') ||
+                  className.includes('mole') || className.includes('growth')) {
+                
+                // Check for specific conditions
+                if (className.includes('cancer') || className.includes('malignant')) {
+                  skinAnalysis.push({
+                    disease: 'melanoma',
+                    probability: Math.min(0.9, prediction.probability + 0.4),
+                    confidence: 'high',
+                    matchedPattern: 'Cancer-related patterns detected',
+                    imageBased: true
+                  });
+                } else if (className.includes('eczema') || className.includes('dermatitis')) {
+                  skinAnalysis.push({
+                    disease: 'eczema',
+                    probability: Math.min(0.8, prediction.probability + 0.3),
+                    confidence: 'medium',
+                    matchedPattern: 'Eczema-like patterns',
+                    imageBased: true
+                  });
+                } else if (className.includes('psoriasis') || className.includes('scale')) {
+                  skinAnalysis.push({
+                    disease: 'psoriasis',
+                    probability: Math.min(0.75, prediction.probability + 0.25),
+                    confidence: 'medium',
+                    matchedPattern: 'Scaling patterns',
+                    imageBased: true
+                  });
+                } else {
+                  // General skin condition
+                  skinAnalysis.push({
+                    disease: 'eczema',
+                    probability: Math.min(0.7, prediction.probability + 0.2),
+                    confidence: 'medium',
+                    matchedPattern: 'General skin patterns',
+                    imageBased: true
+                  });
+                }
+              }
+            });
+            
+            // Fallback if no specific matches
+            if (skinAnalysis.length === 0) {
+              skinAnalysis.push({
+                disease: 'eczema',
+                probability: 0.65,
+                confidence: 'low',
+                matchedPattern: 'General skin inflammation patterns',
+                imageBased: true
+              });
+            }
+            
             resolve(skinAnalysis);
           } catch (error) {
             console.error("Image analysis error:", error);
@@ -864,6 +988,8 @@
     // Analyze symptoms from text
     function analyzeSymptoms(symptomText) {
       const symptoms = symptomText.toLowerCase();
+      console.log("Analyzing symptoms:", symptoms);
+      
       const foundSymptoms = [];
       const possibleConditions = new Set();
       let hasFever = false;
@@ -878,7 +1004,7 @@
           if (symptoms.includes(symptom)) {
             foundSymptoms.push({
               symptom: symptom,
-              type: 'skin',
+              type: 'common',
               relatedDisease: disease
             });
             possibleConditions.add(disease);
@@ -904,6 +1030,37 @@
       if (symptoms.includes('fever') || symptoms.includes('temperature')) {
         hasFever = true;
         hasSystemic = true;
+        if (!foundSymptoms.some(s => s.symptom === 'fever')) {
+          foundSymptoms.push({
+            symptom: 'fever',
+            type: 'systemic',
+            relatedDisease: 'common_cold'
+          });
+        }
+      }
+      
+      // Check for headache specifically
+      if (symptoms.includes('headache')) {
+        hasSystemic = true;
+        if (!foundSymptoms.some(s => s.symptom === 'headache')) {
+          foundSymptoms.push({
+            symptom: 'headache',
+            type: 'systemic',
+            relatedDisease: 'common_cold'
+          });
+        }
+      }
+      
+      // Check for cold specifically
+      if (symptoms.includes('cold') || symptoms.includes('runny nose')) {
+        if (!foundSymptoms.some(s => s.symptom === 'cold')) {
+          foundSymptoms.push({
+            symptom: 'cold',
+            type: 'common',
+            relatedDisease: 'common_cold'
+          });
+          possibleConditions.add('common_cold');
+        }
       }
       
       return {
@@ -912,57 +1069,6 @@
         hasFever: hasFever,
         hasSystemic: hasSystemic
       };
-    }
-
-    // Enhanced analysis using skin disease patterns
-    function enhanceWithSkinDiseaseLogic(predictions, img) {
-      const skinResults = [];
-      
-      predictions.forEach(prediction => {
-        const className = prediction.className.toLowerCase();
-        const baseProbability = prediction.probability;
-        
-        // Map to skin diseases
-        Object.keys(MEDICAL_DATABASE).forEach(disease => {
-          let probability = baseProbability;
-          let matched = false;
-          
-          // Simple keyword matching for demo
-          if (className.includes('skin') || className.includes('rash') || 
-              className.includes('spot') || className.includes('lesion')) {
-            probability += 0.2;
-            matched = true;
-          }
-          
-          if (className.includes(disease)) {
-            probability += 0.3;
-            matched = true;
-          }
-          
-          if (matched && probability > baseProbability) {
-            skinResults.push({
-              disease: disease,
-              probability: Math.min(0.95, probability),
-              confidence: probability > 0.7 ? 'high' : 'medium',
-              matchedPattern: 'AI pattern recognition',
-              imageBased: true
-            });
-          }
-        });
-      });
-      
-      // Fallback if no specific matches
-      if (skinResults.length === 0) {
-        skinResults.push({
-          disease: 'eczema',
-          probability: 0.65,
-          confidence: 'medium',
-          matchedPattern: 'General skin inflammation patterns',
-          imageBased: true
-        });
-      }
-      
-      return skinResults.sort((a, b) => b.probability - a.probability);
     }
 
     // Combine image and symptom analyses
@@ -1013,6 +1119,16 @@
         });
       });
       
+      // If no results, add common conditions based on symptoms
+      if (combined.length === 0 && symptomAnalysis.hasSystemic) {
+        combined.push({
+          disease: 'common_cold',
+          probability: 0.7,
+          confidence: 'medium',
+          sources: ['symptoms']
+        });
+      }
+      
       return combined.sort((a, b) => b.probability - a.probability);
     }
 
@@ -1021,7 +1137,13 @@
       resultsContent.innerHTML = '';
       
       if (!results || results.length === 0) {
-        resultsContent.innerHTML = '<p>No specific patterns detected. Please consult a healthcare provider.</p>';
+        resultsContent.innerHTML = `
+          <div style="text-align: center; padding: 40px;">
+            <h3 style="color: #7f8c8d;">No specific patterns detected</h3>
+            <p>Based on your symptoms, we couldn't identify a specific condition pattern.</p>
+            <p><strong>Recommendation:</strong> Please consult a healthcare provider for proper diagnosis.</p>
+          </div>
+        `;
         resultsContainer.style.display = 'block';
         return;
       }
@@ -1033,7 +1155,8 @@
         symptomSummary.innerHTML = `
           <h3 style="color: #2c3e50; margin-bottom: 15px;">📋 Symptom Analysis Summary</h3>
           <p><strong>Detected Symptoms:</strong> ${symptomAnalysis.symptoms.map(s => s.symptom).join(', ')}</p>
-          ${symptomAnalysis.hasFever ? '<p style="color: #e74c3c; margin-top: 10px;"><strong>⚠️ Fever detected:</strong> This may indicate an infectious or systemic condition.</p>' : ''}
+          ${symptomAnalysis.hasFever ? '<p style="color: #e74c3c; margin-top: 10px;"><strong>⚠️ Fever detected:</strong> This may indicate an infectious condition.</p>' : ''}
+          ${symptomAnalysis.hasSystemic ? '<p style="color: #f39c12; margin-top: 10px;"><strong>ℹ️ Systemic symptoms detected:</strong> Condition may affect entire body.</p>' : ''}
         `;
         resultsContent.appendChild(symptomSummary);
       }
@@ -1068,7 +1191,6 @@
           </div>
           <div class="result-description">
             <strong>Description:</strong> ${diseaseInfo.description}<br>
-            <strong>Visual Signs:</strong> ${diseaseInfo.visualSymptoms}<br>
             <strong>Common Symptoms:</strong> ${diseaseInfo.commonSymptoms.join(', ')}<br>
             <strong>Analysis Sources:</strong> ${result.sources.join(' + ')}
           </div>
@@ -1091,11 +1213,10 @@
         <h4 style="color: #856404; margin-bottom: 10px;">Important Medical Notice</h4>
         <p style="color: #856404;">
           This analysis combines AI pattern recognition with symptom correlation for <strong>educational purposes only</strong>.
-          It is <strong>NOT a medical diagnosis</strong>. Always consult a qualified dermatologist or healthcare 
-          provider for professional medical advice and diagnosis.
+          It is <strong>NOT a medical diagnosis</strong>. Always consult a qualified healthcare provider.
         </p>
         <p style="color: #856404; margin-top: 10px; font-weight: bold;">
-          ${symptomAnalysis.hasFever ? '⚠️ Fever detected - consider seeking medical attention if symptoms persist or worsen.' : 'If you notice any changing, growing, or concerning symptoms, seek medical attention.'}
+          ${symptomAnalysis.hasFever ? '⚠️ Fever detected - consider seeking medical attention.' : 'If symptoms persist or worsen, seek medical attention.'}
         </p>
       `;
       
