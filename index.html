@@ -3,113 +3,104 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>AI Skin Disease Detector</title>
+  <title>Skin Disease Detection | AILabAPI</title>
   <style>
     body {
       font-family: Arial, sans-serif;
-      background: #f9fafb;
-      text-align: center;
-      padding: 30px;
+      background: #f0f2f5;
+      color: #333;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 40px;
     }
     h1 {
-      color: #2b2b2b;
+      color: #1a73e8;
     }
     input[type="file"] {
-      margin-top: 20px;
+      margin: 20px 0;
     }
     button {
-      margin-top: 20px;
-      padding: 10px 20px;
-      font-size: 16px;
-      background: #4f46e5;
+      background-color: #1a73e8;
       color: white;
       border: none;
+      padding: 10px 20px;
+      font-size: 16px;
       border-radius: 6px;
       cursor: pointer;
     }
     button:hover {
-      background: #3730a3;
+      background-color: #0c56d0;
     }
-    #result {
-      margin-top: 30px;
-      background: white;
-      border-radius: 10px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    .result {
+      margin-top: 25px;
+      background: #fff;
       padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+      width: 90%;
       max-width: 500px;
-      margin-left: auto;
-      margin-right: auto;
-      text-align: left;
+      word-break: break-word;
     }
     img {
-      margin-top: 15px;
-      max-width: 100%;
+      max-width: 300px;
       border-radius: 10px;
-    }
-    .loader {
-      margin-top: 20px;
-      display: none;
+      margin-top: 15px;
     }
   </style>
 </head>
 <body>
-  <h1>🧠 AI Skin Disease Detector</h1>
-  <p>Upload a skin image to analyze possible conditions (for educational use only).</p>
-  
-  <input type="file" id="imageInput" accept="image/*" />
-  <br>
-  <button onclick="analyzeImage()">Analyze</button>
+  <h1>🧴 Skin Disease Detection</h1>
+  <p>Upload a skin image to analyze using AILabAPI</p>
 
-  <div class="loader" id="loader">⏳ Analyzing...</div>
-  <div id="result"></div>
+  <input type="file" id="imageInput" accept="image/*" />
+  <button onclick="analyzeSkin()">Analyze</button>
+
+  <div class="result" id="resultBox">Result will appear here...</div>
 
   <script>
-    const API_URL = "https://www.ailabapi.com/api/portrait/analysis/skin-disease-detection";
-    const API_KEY = "MI5p8nZOBDfhRUoqs1mpgBEfwNok8wHe2QK9uVHCqAkhvib3eZd7S65lYzR3WCQa"; // Replace with your AILab API Key
-
-    async function analyzeImage() {
-      const fileInput = document.getElementById('imageInput');
-      const loader = document.getElementById('loader');
-      const resultDiv = document.getElementById('result');
-      resultDiv.innerHTML = "";
+    async function analyzeSkin() {
+      const fileInput = document.getElementById("imageInput");
+      const resultBox = document.getElementById("resultBox");
 
       if (!fileInput.files.length) {
-        alert("Please select an image first!");
+        alert("Please upload an image first!");
         return;
       }
 
+      const file = fileInput.files[0];
       const formData = new FormData();
-      formData.append("image", fileInput.files[0]);
+      formData.append("image", file);
 
-      loader.style.display = "block";
+      resultBox.innerHTML = "🔍 Analyzing... Please wait...";
 
       try {
-        const response = await fetch(API_URL, {
+        const response = await fetch("https://api.ailabapi.com/api/portrait/analysis/skin-disease-detection", {
           method: "POST",
           headers: {
-            "AILab-API-Key": API_KEY
+            "ailabapi-api-key": "YOUR_API_KEY_HERE"  // ⬅️ Replace this
           },
           body: formData
         });
 
         const data = await response.json();
-        loader.style.display = "none";
+        console.log(data);
 
-        if (data && data.result) {
-          let html = `<h3>🩺 Analysis Result:</h3>`;
-          html += `<ul>`;
-          data.result.forEach(item => {
-            html += `<li><b>${item.name}</b> — Confidence: ${(item.score * 100).toFixed(2)}%</li>`;
-          });
-          html += `</ul>`;
-          resultDiv.innerHTML = html;
+        if (data.data && data.data.results_english) {
+          const results = data.data.results_english;
+          let output = `<h3>Analysis Result</h3>`;
+          output += `<p><strong>Image Type:</strong> ${data.data.image_type}</p>`;
+          output += `<ul>`;
+          for (let key in results) {
+            output += `<li>${key}: ${(results[key] * 100).toFixed(2)}%</li>`;
+          }
+          output += `</ul>`;
+          resultBox.innerHTML = output;
         } else {
-          resultDiv.innerHTML = `<p>❌ No result received. Check your API key or credits.</p>`;
+          resultBox.innerHTML = `<p style="color:red;">Error: ${JSON.stringify(data)}</p>`;
         }
-
-      } catch (error) {
-        loader.style.display = "none";
-        resultDiv.innerHTML = `<p>⚠️ Error: ${error.message}</p>`;
+      } catch (err) {
+        resultBox.innerHTML = `<p style="color:red;">Error: ${err.message}</p>`;
       }
     }
   </script>
