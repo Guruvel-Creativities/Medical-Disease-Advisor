@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI Skin Disease Detector</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f9fafb;
+      text-align: center;
+      padding: 30px;
+    }
+    h1 {
+      color: #2b2b2b;
+    }
+    input[type="file"] {
+      margin-top: 20px;
+    }
+    button {
+      margin-top: 20px;
+      padding: 10px 20px;
+      font-size: 16px;
+      background: #4f46e5;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    button:hover {
+      background: #3730a3;
+    }
+    #result {
+      margin-top: 30px;
+      background: white;
+      border-radius: 10px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      padding: 20px;
+      max-width: 500px;
+      margin-left: auto;
+      margin-right: auto;
+      text-align: left;
+    }
+    img {
+      margin-top: 15px;
+      max-width: 100%;
+      border-radius: 10px;
+    }
+    .loader {
+      margin-top: 20px;
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <h1>🧠 AI Skin Disease Detector</h1>
+  <p>Upload a skin image to analyze possible conditions (for educational use only).</p>
+  
+  <input type="file" id="imageInput" accept="image/*" />
+  <br>
+  <button onclick="analyzeImage()">Analyze</button>
+
+  <div class="loader" id="loader">⏳ Analyzing...</div>
+  <div id="result"></div>
+
+  <script>
+    const API_URL = "https://www.ailabapi.com/api/portrait/analysis/skin-disease-detection";
+    const API_KEY = "MI5p8nZOBDfhRUoqs1mpgBEfwNok8wHe2QK9uVHCqAkhvib3eZd7S65lYzR3WCQa"; // Replace with your AILab API Key
+
+    async function analyzeImage() {
+      const fileInput = document.getElementById('imageInput');
+      const loader = document.getElementById('loader');
+      const resultDiv = document.getElementById('result');
+      resultDiv.innerHTML = "";
+
+      if (!fileInput.files.length) {
+        alert("Please select an image first!");
+        return;
+      }
+
+      const formData = new FormData();
+      formData.append("image", fileInput.files[0]);
+
+      loader.style.display = "block";
+
+      try {
+        const response = await fetch(API_URL, {
+          method: "POST",
+          headers: {
+            "AILab-API-Key": API_KEY
+          },
+          body: formData
+        });
+
+        const data = await response.json();
+        loader.style.display = "none";
+
+        if (data && data.result) {
+          let html = `<h3>🩺 Analysis Result:</h3>`;
+          html += `<ul>`;
+          data.result.forEach(item => {
+            html += `<li><b>${item.name}</b> — Confidence: ${(item.score * 100).toFixed(2)}%</li>`;
+          });
+          html += `</ul>`;
+          resultDiv.innerHTML = html;
+        } else {
+          resultDiv.innerHTML = `<p>❌ No result received. Check your API key or credits.</p>`;
+        }
+
+      } catch (error) {
+        loader.style.display = "none";
+        resultDiv.innerHTML = `<p>⚠️ Error: ${error.message}</p>`;
+      }
+    }
+  </script>
+</body>
+</html>
